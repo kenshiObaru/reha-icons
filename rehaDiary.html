@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>リハビリ日記</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="android/android-launchericon-192-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="android/android-launchericon-512-512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="ios/ios-appicon-180-180.png">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .control-group {
+            display: flex;
+            gap: 10px;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 600px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f0f0f0;
+            position: sticky;
+            top: 0;
+        }
+        th:first-child {
+            background-color: #f0f0f0;
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            text-align: left;
+            min-width: 150px;
+        }
+        td:first-child {
+            background-color: #f5f5f5;
+            position: sticky;
+            left: 0;
+            z-index: 1;
+            text-align: left;
+            font-weight: bold;
+        }
+        .activity-cell {
+            cursor: pointer;
+            position: relative;
+        }
+        .activity-cell:hover {
+            background-color: #f9f9f9;
+        }
+        .activity-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .activity-link {
+            margin-left: 10px;
+            color: #0066cc;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .add-activity {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button.secondary {
+            background-color: #6c757d;
+        }
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+        input, select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .date-nav {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .close-modal {
+            cursor: pointer;
+            font-size: 22px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>リハビリ日記</h1>
+        
+        <div class="controls">
+            <div class="date-nav">
+                <button id="prev-week">◀ 前の週</button>
+                <span id="date-range">日付範囲</span>
+                <button id="next-week">次の週 ▶</button>
+            </div>
+            <div class="control-group">
+                <button id="add-activity-btn">新しい実施項目を追加</button>
+                <button id="download-csv" class="secondary">CSVでダウンロード</button>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table id="rehab-table">
+                <thead>
+                    <tr id="date-header">
+                        <th>実施項目</th>
+                        <!-- 日付ヘッダーはJSで追加 -->
+                    </tr>
+                </thead>
+                <tbody id="activities-body">
+                    <!-- 活動項目と記録はJSで追加 -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 実施項目追加モーダル -->
+    <div id="add-activity-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">新しい実施項目を追加</div>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div class="form-group">
+                <label for="activity-name">実施項目名:</label>
+                <input type="text" id="activity-name" placeholder="例：ストレッチ、歩行訓練など">
+            </div>
+            <div class="form-group">
+                <label for="activity-link">関連アプリのリンク (任意):</label>
+                <input type="text" id="activity-link" placeholder="例：https://example.com/app">
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-add">キャンセル</button>
+                <button id="confirm-add">追加</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 記録編集モーダル -->
+    <div id="edit-record-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">実施回数の編集</div>
+                <span class="close-modal">&times;</span>
+            </div>
+            <div id="edit-record-content">
+                <div class="form-group">
+                    <label id="edit-activity-date">2023年1月1日 - ストレッチ</label>
+                    <input type="number" id="record-count" min="0" placeholder="実施回数を入力">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancel-edit">キャンセル</button>
+                <button id="confirm-edit">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        //
+        // ServiceWorker登録：https://developers.google.com/web/fundamentals/primers/service-workers/?hl=ja
+        //if ('serviceWorker' in navigator) {
+        //	navigator.serviceWorker.register('sw.js').then(function(registration) {
+	//	console.log('ServiceWorker registration successful with scope: ', registration.scope);
+	//}).catch(function(err) {
+	//	console.log('ServiceWorker registration failed: ', err);
+	//});
+        //}
+        // New
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('/pwa_reha/service-worker.js', {
+            scope: '/pwa_reha/'
+          });
+        }
+
+        // ServiceWorker登録
+
+        // データ構造
+        let rehabData = {
+            activities: [], // {name: "ストレッチ", link: "https://..."}
+            records: {}     // {"2023-01-01": {"ストレッチ": 2, "歩行訓練": 1}}
+        };
+
+        // 現在表示中の日付範囲
+        let currentStartDate = new Date();
+        currentStartDate.setDate(currentStartDate.getDate() - currentStartDate.getDay()); // 週の最初の日
+
+        // DOM要素
+        const dateHeader = document.getElementById('date-header');
+        const activitiesBody = document.getElementById('activities-body');
+        const dateRangeElement = document.getElementById('date-range');
+        const addActivityModal = document.getElementById('add-activity-modal');
+        const editRecordModal = document.getElementById('edit-record-modal');
+
+        // 日付フォーマット用関数
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function formatDateDisplay(date) {
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${month}/${day}`;
+        }
+
+        function formatFullDateDisplay(date) {
+            const year = date.getFullYear();
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            return `${year}年${month}月${day}日`;
+        }
+
+        // 日付ヘッダーを更新
+        function updateDateHeader() {
+            // 既存のヘッダーをクリア（最初の「実施項目」列以外）
+            while (dateHeader.children.length > 1) {
+                dateHeader.removeChild(dateHeader.lastChild);
+            }
+
+            // 日付範囲を表示
+            const endDate = new Date(currentStartDate);
+            endDate.setDate(endDate.getDate() + 6);
+            dateRangeElement.textContent = `${formatFullDateDisplay(currentStartDate)} 〜 ${formatFullDateDisplay(endDate)}`;
+
+            // 日付ヘッダーを作成
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(currentStartDate);
+                date.setDate(date.getDate() + i);
+                
+                const th = document.createElement('th');
+                th.textContent = formatDateDisplay(date);
+                th.dataset.date = formatDate(date);
+                dateHeader.appendChild(th);
+            }
+        }
+
+        // 実施項目と記録を更新
+        function updateActivityRows() {
+            // 既存の行をクリア
+            activitiesBody.innerHTML = '';
+
+            // 各実施項目について行を作成
+            rehabData.activities.forEach(activity => {
+                const row = document.createElement('tr');
+                
+                // 実施項目名のセル
+                const nameCell = document.createElement('td');
+                const nameLabel = document.createElement('div');
+                nameLabel.className = 'activity-label';
+                
+                const nameText = document.createElement('span');
+                nameText.textContent = activity.name;
+                nameLabel.appendChild(nameText);
+                
+                if (activity.link) {
+                    const linkElement = document.createElement('a');
+                    linkElement.className = 'activity-link';
+                    linkElement.href = activity.link;
+                    linkElement.textContent = '🔗';
+                    linkElement.title = 'リンクを開く';
+                    linkElement.target = '_blank';
+                    nameLabel.appendChild(linkElement);
+                }
+                
+                nameCell.appendChild(nameLabel);
+                row.appendChild(nameCell);
+                
+                // 各日付の記録セル
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(currentStartDate);
+                    date.setDate(date.getDate() + i);
+                    const dateStr = formatDate(date);
+                    
+                    const cell = document.createElement('td');
+                    cell.className = 'activity-cell';
+                    cell.dataset.date = dateStr;
+                    cell.dataset.activity = activity.name;
+                    
+                    // 記録があれば表示
+                    if (rehabData.records[dateStr] && rehabData.records[dateStr][activity.name] !== undefined) {
+                        cell.textContent = rehabData.records[dateStr][activity.name];
+                    } else {
+                        cell.textContent = '-';
+                    }
+                    
+                    // クリックイベント
+                    cell.addEventListener('click', function() {
+                        openEditRecordModal(dateStr, activity.name);
+                    });
+                    
+                    row.appendChild(cell);
+                }
+                
+                activitiesBody.appendChild(row);
+            });
+        }
+
+        // 実施項目追加モーダルを開く
+        function openAddActivityModal() {
+            document.getElementById('activity-name').value = '';
+            document.getElementById('activity-link').value = '';
+            addActivityModal.style.display = 'flex';
+        }
+
+        // 実施項目追加モーダルを閉じる
+        function closeAddActivityModal() {
+            addActivityModal.style.display = 'none';
+        }
+
+        // 記録編集モーダルを開く
+        function openEditRecordModal(date, activity) {
+            const dateObj = new Date(date);
+            document.getElementById('edit-activity-date').textContent = `${formatFullDateDisplay(dateObj)} - ${activity}`;
+            
+            // 現在の記録値を取得
+            let currentValue = '-';
+            if (rehabData.records[date] && rehabData.records[date][activity] !== undefined) {
+                currentValue = rehabData.records[date][activity];
+            }
+            
+            document.getElementById('record-count').value = currentValue === '-' ? '' : currentValue;
+            document.getElementById('record-count').dataset.date = date;
+            document.getElementById('record-count').dataset.activity = activity;
+            
+            editRecordModal.style.display = 'flex';
+            document.getElementById('record-count').focus();
+        }
+
+        // 記録編集モーダルを閉じる
+        function closeEditRecordModal() {
+            editRecordModal.style.display = 'none';
+        }
+
+        // 実施項目を追加
+        function addActivity() {
+            const name = document.getElementById('activity-name').value.trim();
+            const link = document.getElementById('activity-link').value.trim();
+            
+            if (!name) {
+                alert('実施項目名を入力してください');
+                return;
+            }
+            
+            // 重複チェック
+            if (rehabData.activities.some(a => a.name === name)) {
+                alert('この実施項目名は既に存在します');
+                return;
+            }
+            
+            rehabData.activities.push({
+                name: name,
+                link: link || null
+            });
+            
+            saveData();
+            updateActivityRows();
+            closeAddActivityModal();
+        }
+
+        // 記録を編集
+        function editRecord() {
+            const count = document.getElementById('record-count').value.trim();
+            const date = document.getElementById('record-count').dataset.date;
+            const activity = document.getElementById('record-count').dataset.activity;
+            
+            // レコードを初期化（必要な場合）
+            if (!rehabData.records[date]) {
+                rehabData.records[date] = {};
+            }
+            
+            if (count === '') {
+                // 値が空の場合は記録を削除
+                if (rehabData.records[date][activity] !== undefined) {
+                    delete rehabData.records[date][activity];
+                    
+                    // 日付のレコードが空になったら削除
+                    if (Object.keys(rehabData.records[date]).length === 0) {
+                        delete rehabData.records[date];
+                    }
+                }
+            } else {
+                // 数値として保存
+                rehabData.records[date][activity] = parseInt(count, 10);
+            }
+            
+            saveData();
+            updateActivityRows();
+            closeEditRecordModal();
+        }
+
+        // 前の週へ移動
+        function goToPreviousWeek() {
+            currentStartDate.setDate(currentStartDate.getDate() - 7);
+            updateDateHeader();
+            updateActivityRows();
+        }
+
+        // 次の週へ移動
+        function goToNextWeek() {
+            currentStartDate.setDate(currentStartDate.getDate() + 7);
+            updateDateHeader();
+            updateActivityRows();
+        }
+
+        // CSVファイルをダウンロード
+        function downloadCSV() {
+            // ヘッダー行（日付）を取得
+            const dates = [];
+            for (let i = 0; i < 30; i++) { // 30日分のデータをエクスポート
+                const date = new Date();
+                date.setDate(date.getDate() - 29 + i); // 今日を含めて過去30日
+                dates.push(formatDate(date));
+            }
+            
+            // CSVデータを作成
+            let csvContent = "実施項目";
+            dates.forEach(date => {
+                csvContent += `,${date}`;
+            });
+            csvContent += "\n";
+            
+            // 各実施項目のデータを追加
+            rehabData.activities.forEach(activity => {
+                csvContent += `${activity.name}`;
+                dates.forEach(date => {
+                    let value = "-";
+                    if (rehabData.records[date] && rehabData.records[date][activity.name] !== undefined) {
+                        value = rehabData.records[date][activity.name];
+                    }
+                    csvContent += `,${value}`;
+                });
+                csvContent += "\n";
+            });
+            
+            // BOMを追加してUTF-8エンコーディングを明示
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, csvContent], { type: "text/csv;charset=utf-8" });
+            
+            // ダウンロードリンクを作成してクリック
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `リハビリ日記_${formatDate(new Date())}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // データをローカルストレージに保存
+        function saveData() {
+            localStorage.setItem('rehabData', JSON.stringify(rehabData));
+        }
+
+        // データをローカルストレージから読み込み
+        function loadData() {
+            const savedData = localStorage.getItem('rehabData');
+            if (savedData) {
+                rehabData = JSON.parse(savedData);
+            } else {
+                // サンプルデータを初期化
+                rehabData = {
+                    activities: [
+                        { name: "ストレッチ", link: null },
+                        { name: "歩行訓練", link: null }
+                    ],
+                    records: {}
+                };
+                saveData();
+            }
+        }
+
+        // イベントリスナーを設定
+        document.getElementById('prev-week').addEventListener('click', goToPreviousWeek);
+        document.getElementById('next-week').addEventListener('click', goToNextWeek);
+        document.getElementById('add-activity-btn').addEventListener('click', openAddActivityModal);
+        document.getElementById('download-csv').addEventListener('click', downloadCSV);
+        
+        // モーダル関連
+        document.getElementById('confirm-add').addEventListener('click', addActivity);
+        document.getElementById('cancel-add').addEventListener('click', closeAddActivityModal);
+        document.getElementById('confirm-edit').addEventListener('click', editRecord);
+        document.getElementById('cancel-edit').addEventListener('click', closeEditRecordModal);
+        
+        // モーダル閉じるボタン
+        document.querySelectorAll('.close-modal').forEach(element => {
+            element.addEventListener('click', function() {
+                closeAddActivityModal();
+                closeEditRecordModal();
+            });
+        });
+
+        // 初期化
+        loadData();
+        updateDateHeader();
+        updateActivityRows();
+    </script>
+</body>
+</html>
